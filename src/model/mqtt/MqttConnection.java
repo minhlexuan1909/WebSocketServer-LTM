@@ -1,0 +1,247 @@
+package model.mqtt;
+
+import model.pubsub.MqttMessage;
+import model.pubsub.MqttMessageType;
+import model.pubsub.Publisher;
+import model.pubsub.Subscriber;
+import org.java_websocket.WebSocket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class MqttConnection {
+    private final Logger log = LoggerFactory.getLogger(MqttConnection.class);
+    private final Map<String, Publisher> publishers;
+
+    private final Map<Long, Subscriber> subscribers;
+
+    private final Map<Long, List<String>> subscriberTopic;
+
+    private final MqttListener listener;
+
+    public MqttConnection(MqttListener listener) {
+        this(new HashMap<>(), listener, new HashMap<>(), new HashMap<>());
+    }
+
+    public MqttConnection(Map<String, Publisher> publishers, MqttListener listener, Map<Long, List<String>> subscriberTopic, Map<Long, Subscriber> subscribers) {
+        this.publishers = publishers;
+        this.listener = listener;
+        this.subscriberTopic = subscriberTopic;
+        this.subscribers = subscribers;
+    }
+
+    public boolean createPublisher(String topic, List<Subscriber> subscribers) {
+        if (isValidTopic(topic)) {
+            return false;
+        } else {
+            Publisher publisher = new Publisher(topic, subscribers);
+            publishers.put(topic, publisher);
+            return true;
+        }
+    }
+
+    public Publisher createPublisher(String topic) {
+        if (isValidTopic(topic)) {
+            return publishers.get(topic);
+        } else {
+            Publisher publisher = new Publisher(topic, new ArrayList<>());
+            publishers.put(topic, publisher);
+            return publisher;
+        }
+    }
+
+    public void handleMessage(MqttMessage message, WebSocket ws) {
+        int messageType = message.getType();
+        switch (messageType) {
+            case 1:
+                processConnect(message, ws);
+                break;
+            case 2:
+                processPublish(message, ws);
+                break;
+            case 3:
+                processSubscribe(message, ws);
+                break;
+            case 4:
+                processUnSubscribe(message, ws);
+                break;
+            case 5:
+                processDisconnect(message, ws);
+                break;
+            default:
+                String error = "Unknown MessageType: " + messageType;
+                log.error(error);
+                listener.onMqttError(message, error);
+                break;
+        }
+    }
+
+    private boolean isValidTopic(String topic) {
+        return publishers.get(topic) != null;
+    }
+
+    private void processConnect(MqttMessage message, WebSocket ws) {
+        Long clientId = message.getClientId();
+        resubscribe(clientId, ws);
+        listener.onMqttConnect(message);
+//        ws.send(message.copy("connected"));
+        ws.send("connected");
+    }
+
+    private void processPublish(MqttMessage message, WebSocket ws) {
+        Publisher publisher = publishers.get(message.getTopic());
+        if (publisher != null) {
+            listener.onMqttPublish(message);
+            publisher.publish(message);
+        } else {
+            String error = "Invalid publisher topic: " + message.getTopic();
+            log.error(error);
+            listener.onMqttError(message, error);
+        }
+    }
+
+    private void processSubscribe(MqttMessage message, WebSocket ws) {
+        Publisher publisher = publishers.get(message.getTopic());
+        if (publisher == null) {
+            publisher = createPublisher(message.getTopic());
+        }
+        long clientId = message.getClientId();
+        List<Subscriber> subscribers = publisher.getSubscribers();
+        for (Subscriber sub : subscribers) {
+            if (clientId == sub.getClientId()) {
+                sub.setWebSocket(ws);
+                //listener.onMqttSubscribe(message);
+                return;
+            }
+        }
+        subscribers.add(new Subscriber(
+                message.getClientId(),
+                ws
+        ));
+
+        List<String> topics = subscriberTopic.get(clientId);
+        if (topics == null) {
+            List<String> newTopics = new ArrayList<>();
+            newTopics.add(message.getTopic());
+            subscriberTopic.put(
+                    clientId,
+                    newTopics
+            );
+        } else {
+            subscriberTopic.get(clientId).add(message.getTopic());
+        }
+        listener.onMqttSubscribe(message);
+        publisher.publish(message.copy("New person join conversation"));
+    }
+
+    private void processUnSubscribe(MqttMessage message, WebSocket ws) {
+        log.info("processUnSubscribe: message" + message);
+        Publisher publisher = publishers.get(message.getTopic());
+        if (publisher != null) {
+            long clientId = message.getClientId();
+            List<Subscriber> subscribers = publisher.getSubscribers();
+            for (Subscriber sub : subscribers) {
+                if (clientId == sub.getClientId()) {
+                    publisher.removeSubscriber(sub);
+                    subscriberTopic.get(clientId).remove(message.getTopic());
+                    listener.onMqttUnSubscribe(message);
+                    publisher.publish(message.copy("Remove from conversation"));
+                    return;
+                }
+            }
+            String error = "Invalid subscriber clientId: " + message.getClientId();
+            log.error(error);
+            listener.onMqttError(message, error);
+        } else {
+            String error = "Invalid publisher topic: " + message.getTopic();
+            log.error(error);
+            listener.onMqttError(message, error);
+        }
+    }
+
+    private void processDisconnect(MqttMessage message, WebSocket ws) {
+        Publisher publisher = publishers.get(message.getTopic());
+        if (publisher != null) {
+            long clientId = message.getClientId();
+            List<Subscriber> subscribers = publisher.getSubscribers();
+            for (Subscriber sub : subscribers) {
+                if (clientId == sub.getClientId()) {
+                    sub.setWebSocket(null);
+                    listener.onMqttDisconnect(message);
+                    return;
+                }
+            }
+        } else {
+            String error = "Invalid publisher topic: " + message.getTopic();
+            log.error(error);
+            listener.onMqttError(message, error);
+        }
+    }
+
+    private void resubscribe(Long clientId, WebSocket ws) {
+        List<String> topics = subscriberTopic.get(clientId);
+        if (topics != null && !topics.isEmpty()) {
+            for (String topic : topics) {
+                resubscribeTopic(clientId, ws, topic);
+            }
+        } else {
+            for (String topic : publishers.keySet()) {
+                resubscribeTopic(clientId, ws, topic);
+            }
+        }
+    }
+
+    private void resubscribeTopic(Long clientId, WebSocket ws, String topic) {
+        Publisher publisher = publishers.get(topic);
+        if (publisher == null) {
+            subscriberTopic.get(clientId).remove(topic);
+        } else {
+            List<Subscriber> subscribers = publisher.getSubscribers();
+            for (Subscriber sub : subscribers) {
+                if (clientId.equals(sub.getClientId())) {
+                    sub.setWebSocket(ws);
+                    return;
+                }
+            }
+        }
+    }
+
+    public void removePublisher(String topic) {
+        publishers.remove(topic);
+    }
+
+    public void publish(String topic, MqttMessage message) {
+        publishers.get(topic).publish(message);
+    }
+    public WebSocket getWsSubscriber(Long subscriberId) {
+        Subscriber subscriber = subscribers.get(subscriberId);
+        if (subscriber != null && subscriber.isOpen()) {
+            return subscriber.getWebSocket();
+        }
+        return null;
+    }
+
+    public Logger getLog() {
+        return log;
+    }
+
+    public Map<String, Publisher> getPublishers() {
+        return publishers;
+    }
+
+    public Map<Long, Subscriber> getSubscribers() {
+        return subscribers;
+    }
+
+    public Map<Long, List<String>> getSubscriberTopic() {
+        return subscriberTopic;
+    }
+
+    public MqttListener getListener() {
+        return listener;
+    }
+}
