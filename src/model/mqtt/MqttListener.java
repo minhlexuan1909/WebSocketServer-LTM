@@ -1,7 +1,5 @@
 package model.mqtt;
 
-import model.pubsub.MqttMessage;
-
 public interface MqttListener {
     void onMqttConnect(MqttMessage message);
     void onMqttPublish(MqttMessage message);

@@ -3,6 +3,7 @@ package model.pubsub;
 import java.util.ArrayList;
 import java.util.List;
 import com.google.gson.Gson;
+import model.mqtt.MqttMessage;
 
 public class Publisher implements Publishable{
     private final String topic;

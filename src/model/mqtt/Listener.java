@@ -1,7 +1,5 @@
 package model.mqtt;
 
-import model.pubsub.MqttMessage;
-
 public class Listener implements MqttListener{
     public Listener() {
     }

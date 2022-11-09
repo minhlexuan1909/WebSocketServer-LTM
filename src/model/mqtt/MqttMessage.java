@@ -1,4 +1,4 @@
-package model.pubsub;
+package model.mqtt;
 
 import java.io.Serializable;
 
