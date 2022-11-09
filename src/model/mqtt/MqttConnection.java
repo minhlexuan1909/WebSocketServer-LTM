@@ -1,7 +1,6 @@
 package model.mqtt;
 
 import model.pubsub.MqttMessage;
-import model.pubsub.MqttMessageType;
 import model.pubsub.Publisher;
 import model.pubsub.Subscriber;
 import org.java_websocket.WebSocket;

@@ -1,7 +1,6 @@
 package model.mqtt;
 
 import model.pubsub.MqttMessage;
-import model.pubsub.Subscription;
 
 public class Listener implements MqttListener{
     public Listener() {
