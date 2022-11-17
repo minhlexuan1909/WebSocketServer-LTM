@@ -1,8 +1,8 @@
 package model.mqtt;
 
+import model.java_websocket.WebSocket;
 import model.pubsub.Publisher;
 import model.pubsub.Subscriber;
-import org.java_websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

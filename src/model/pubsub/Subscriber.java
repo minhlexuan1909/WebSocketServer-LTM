@@ -1,6 +1,7 @@
 package model.pubsub;
 
-import org.java_websocket.WebSocket;
+
+import model.java_websocket.WebSocket;
 
 import java.util.Objects;
 
