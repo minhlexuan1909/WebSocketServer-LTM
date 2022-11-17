@@ -1,6 +1,7 @@
 package model.mqtt;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 
 public class MqttMessage implements Serializable {
     private static final long serialVersionUID = -3075617026078137668L;
@@ -9,11 +10,31 @@ public class MqttMessage implements Serializable {
     private final int type;
     private final Object payload;
 
-    public MqttMessage(long clientId, String topic, int type, Object payload) {
+    private ByteBuffer bufferString;
+
+    private String resString;
+
+    public String getResString() {
+        return resString;
+    }
+
+    public void setResString(String resString) {
+        this.resString = resString;
+    }
+//    public MqttMessage(long clientId, String topic, int type, Object payload) {
+//        this.clientId = clientId;
+//        this.topic = topic;
+//        this.type = type;
+//        this.payload = payload;
+//    }
+
+
+    public MqttMessage(long clientId, String topic, int type, Object payload, ByteBuffer bufferString) {
         this.clientId = clientId;
         this.topic = topic;
         this.type = type;
         this.payload = payload;
+        this.bufferString = bufferString;
     }
 
     public long getClientId() {
@@ -37,8 +58,17 @@ public class MqttMessage implements Serializable {
                 clientId,
                 topic,
                 type,
-                payload
+                payload,
+                bufferString
         );
+    }
+
+    public void setBufferString(ByteBuffer bufferString) {
+        this.bufferString = bufferString;
+    }
+
+    public ByteBuffer getBufferString() {
+        return bufferString;
     }
 
     @Override
@@ -50,4 +80,5 @@ public class MqttMessage implements Serializable {
                 "payload: " + payload + "\n" +
                 "}";
     }
+
 }

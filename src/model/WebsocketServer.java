@@ -11,6 +11,8 @@ import model.pubsub.Subscriber;
 import org.java_websocket.handshake.ClientHandshake;
 
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class WebsocketServer extends WebSocketServer {
@@ -57,11 +59,34 @@ public class WebsocketServer extends WebSocketServer {
     }
 
     @Override
-    public void onMessage(model.java_websocket.WebSocket conn, String message) {
+    public void onMessage(WebSocket conn, String message) {
         MqttMessage mqttMessage = gson.fromJson(message, MqttMessage.class);
         mqttConnection.handleMessage(mqttMessage, conn);
         System.out.println(mqttMessage);
         System.out.println("publisher ne: " + mqttConnection.getPublishers());
+    }
+
+    @Override
+    public void onMessage(model.java_websocket.WebSocket conn, ByteBuffer message2) {
+        System.out.println(message2);
+
+        String temp = StandardCharsets.UTF_8.decode(message2).toString();
+        String res = "";
+
+        for(int i =0 ; i < temp.length(); i++){
+            res += temp.charAt(i);
+        }
+        System.out.println("res: " + res);
+        MqttMessage mqttMessage = gson.fromJson(res, MqttMessage.class);
+        mqttMessage.setResString(res);
+        mqttConnection.handleMessage(mqttMessage, conn);
+
+        System.out.println(mqttMessage);
+
+
+//        System.out.println(mqttMessage);
+//        System.out.println("publisher ne: " + mqttConnection.getPublishers());
+
 
 //        for (WebSocket sock : conns) {
 //            sock.send(message);

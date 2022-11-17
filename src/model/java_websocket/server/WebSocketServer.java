@@ -714,6 +714,7 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
   }
 
 
+
   @Override
   public final void onWebsocketMessage(WebSocket conn, ByteBuffer blob) {
     onMessage(conn, blob);
@@ -897,7 +898,6 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
    * @see #onMessage(WebSocket, ByteBuffer)
    **/
   public abstract void onMessage(WebSocket conn, String message);
-
   /**
    * Called when errors occurs. If an error causes the websocket connection to fail {@link
    * #onClose(WebSocket, int, String, boolean)} will be called additionally.<br> This method will be

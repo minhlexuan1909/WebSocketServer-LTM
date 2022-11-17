@@ -54,6 +54,7 @@ public class MqttConnection {
 
     public void handleMessage(MqttMessage message, WebSocket ws) {
         int messageType = message.getType();
+        System.out.println(messageType);
         switch (messageType) {
             case 1:
                 processConnect(message, ws);

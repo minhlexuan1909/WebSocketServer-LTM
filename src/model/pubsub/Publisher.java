@@ -55,12 +55,16 @@ public class Publisher implements Publishable{
 
     @Override
     public void publish(MqttMessage message) {
+        System.out.println("Hi");
+        System.out.println(this.subscribers);
         for (Subscriber subscriber : this.subscribers) {
             if (subscriber.isOpen() && subscriber.getClientId() != message.getClientId()) {
 //                subscriber.getWebSocket().send(message);
                 Gson gson = new Gson();
-
-                subscriber.getWebSocket().send(gson.toJson(message.getPayload()));
+//                subscriber.getWebSocket().send(gson.toJson(message.getPayload()));
+                byte[] byteArrray = message.getResString().getBytes();
+                System.out.println("buffer string: " + message.getResString());
+                subscriber.getWebSocket().send(byteArrray);
                 System.out.println("send message to " + subscriber.getWebSocket());
             }
         }
